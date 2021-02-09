@@ -1,0 +1,13 @@
+aws_provider_version = "~> 3.0"
+aws_default_region = "eu-west-1"
+aws_availability_zone = "eu-west-1a"
+aws_default_credentials_path = ".aws/credentials"
+environment = "prod"
+db_port = 3306
+http_port = 80
+https_port = 443
+ssh_port = 22
+memcached_port = 11211
+db_name = "defaultdb"
+db_username = "defaultuser"
+db_password = "YourPwdShouldBeLongAndSecure!"

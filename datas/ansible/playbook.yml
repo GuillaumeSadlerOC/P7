@@ -1,0 +1,97 @@
+####################################################
+# Linux, NGINX, MySQL, PHP
+####################################################
+---
+- hosts: all
+  become: true
+  vars_files:
+    - vars/default.yml
+
+  tasks:
+    # Prerequisites Installation
+    - name: Install Prerequisites
+      apt: name={{ item }} update_cache=yes state=latest force_apt_get_yes
+      loop: [ 'aptitude' ]
+      tags: "prerequisites"
+
+    - name: Install Packages
+      apt: name={{ item }} update_cache=yes state=latest
+      loop: [ 'nginx', 'php-fmp', 'php-mysql']
+      tags: "prerequisites"
+    
+    # Nginx Configuration
+    - name: Copy Nginx config
+      template: src="files/default.j2" dest="/etc/nginx/sites-available/{{ http_conf }}" backup=true
+      tags: "nginx"
+
+    - name: Enable new site
+      file: src="/etc/nginx/sites-available/{{ http_conf }}" dest="/etc/nginx/sites-available/{{ http_conf }}" state=link
+      notify: Reload Nginx
+      tags: "nginx"
+
+    - name: Removes "default" site
+      file: path="/etc/nginx/sites-enabled/default" state=absent
+      notify: Reload Nginx
+      tags: "nginx"
+    
+    # UFW Configuration
+    - name: "UFW - Allow HTTP on port {{ http_port }}"
+      ufw: rule=allow port="{{ http_port }}" proto=tcp
+      tags: "ufw"
+          
+    # Wordpress Installation
+    - name: Download WordPress
+      get_url: url=https://wordpress.org.latest.tar.gz dest=/tmp/wordpress.tar.gz validate_certs=no
+      tags: "wordpress-installation"
+    
+    - name: Extract WordPress
+      unarchive: src=/tmp/wordpress.tar.gz dest={{ wp_site_path }} copy=no
+      become: yes
+      tags: "wordpress-installation"
+
+    - name: Remove wordpress.tar.gz
+      file: path=/tmp/wordpress.tar.gz state=absent
+
+    - name: Copy config file
+      template: src="files/wp-config.php.j2" dest={{ wp_site_path }}/wp-config.php backup=true 
+      tags: "wordpress-installation"
+    
+    - name: Change ownership of installation directory
+      file: path={{ wp_site_path }} owner=www-data group=www-data mode=775 state=directory recurse=yes
+      tags: "wordpress-installation"
+
+    - name: Change ownership of wp-content directory
+      file: path={{ wp_site_path }}/wp-content/ owner=www-data group=www-data mode=755 state=directory recurse=yes
+      tags: "wordpress-installation"
+
+    # Memcached Client Installation
+    # Source : https://aws.amazon.com/fr/elasticache/memcached/wordpress-with-memcached/
+    - name: Download Memcached Client
+      get_url: url=https://elasticache-downloads.s3.amazonaws.com/ClusterClient/PHP-7.0/latest-64bit dest=/tmp/memcached.tar.gz validate_certs=no
+      tags: "memcached"
+
+    # Ou mettre les fichiers décompressés ?
+    - name: Extract Memcached
+      unarchive: src=/tmp/memcached.tar.gz dest:/tmp/latest-64bit copy=no
+      become: yes
+      tags: "memcached"
+    
+    - name: Copy artifact
+      copy: src=artifact/amazon-elasticache-cluster-client.so /opt/bitnami/php/lib/php/extensions/ dest=/opt/bitnami/php/lib/php/extensions/ mode="u=rwx"
+      tags: "memcached"
+
+    - name: Update php.ini and reboot
+      lineinfile: path=/opt/bitnami/php/etc/php.ini line=extension=amazon-elasticache-cluster-client.so create=yes
+      reboot:
+      tags: "memcached"
+
+    # W3 Total Cache Installation
+    - name: Wordpress mu domain mapping
+      subversion: repo=http://svn.wp-plugins.org/{{ item.name }}/{{ item.version }}/ dest=/var/www/wordpress/wp-content/plugins/{{ item.name }}
+      tags: "memcached"
+      with_items:
+        - {name: w3-total-cache, version: tags/0.9.2.11}
+
+    - name: Change perm of wp-config
+      file: path=/opt/bitnami/apps/wordpress/htdocs/wp-config.php mode="777"
+      tags: "memcached"

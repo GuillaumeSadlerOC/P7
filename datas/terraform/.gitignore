@@ -1,0 +1,7 @@
+# Exclude credentials files
+.aws/*
+!aws/.gitkeep
+
+# Exclude folders and files built by Terraform
+.terraform/*
+.terraform.lock.hcl

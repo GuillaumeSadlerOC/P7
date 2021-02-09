@@ -1,0 +1,20 @@
+---
+# Nginx
+http_host: "grimordal.com"
+http_conf: "grimordal.conf"
+http_port: "80"
+
+wp_site_path: "/var/www/grimordal"
+
+# wp-config
+wp_db_name: "defaultdb"
+wp_db_user: "defaultuser"
+wp_db_password: "YourPwdShouldBeLongAndSecure!"
+wp_db_host: ""
+wp_db_charset: "utf8"
+wp_db_collate: "" # The Database Collate type. Don't change this if in doubt.
+wp_table_prefix: "wp_"
+wp_debug: false
+wp_cache: true
+wp_memcached_host: ""
+wp_memcached_port: "11211"
